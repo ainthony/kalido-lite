@@ -1,0 +1,70 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, user-scalable=no" />
+    <meta name="apple-mobile-web-app-capable" content="yes" />
+    <meta name="mobile-web-app-capable" content="yes" />
+    <title>Kalidoface Lite</title>
+  </head>
+  <body>
+    <canvas id="stage"></canvas>
+    <video id="cam" playsinline muted></video>
+
+    <div id="hint" hidden>Drop or load a <b>.vrm</b> file to begin.</div>
+    <div id="toast" hidden></div>
+    <div id="fps"></div>
+
+    <aside id="panel">
+      <button id="toggle-ui" aria-label="Toggle panel">☰</button>
+      <div class="body">
+        <button id="start" class="primary">Start camera</button>
+
+        <label class="file">Model (.vrm 0.x / 1.0)
+          <input id="pick-vrm" type="file" accept=".vrm,.glb,.vsfavatar,application/octet-stream" />
+        </label>
+        <label class="file">Spray texture
+          <input id="pick-spray" type="file" accept="image/*" />
+        </label>
+        <label class="file">Mask texture
+          <input id="pick-mask" type="file" accept="image/*" />
+        </label>
+        <button id="clear-tex">Remove spray/mask</button>
+
+        <fieldset>
+          <legend>Tracking</legend>
+          <label><input id="body" type="checkbox" /> Body (shoulders move the torso)</label>
+          <label><input id="arms" type="checkbox" /> Arms (needs elbows in frame)</label>
+          <label><input id="hands" type="checkbox" /> Fingers (heavier)</label>
+          <label>Upper-body movement <input id="torsoGain" type="range" min="0" max="3" step="0.05" /></label>
+        </fieldset>
+
+        <fieldset>
+          <legend>View (drag = rotate, pinch = zoom, two-finger drag = move)</legend>
+          <label>Rotate <input id="view-yaw" type="range" min="-180" max="180" step="1" /></label>
+          <label>Zoom <input id="view-zoom" type="range" min="0.25" max="6" step="0.01" /></label>
+          <label>Left / right <input id="view-x" type="range" min="-3" max="3" step="0.01" /></label>
+          <label>Up / down <input id="view-y" type="range" min="-3" max="3" step="0.01" /></label>
+          <button id="reset-view" type="button">Reset view</button>
+        </fieldset>
+
+        <label>Apply mix to materials matching
+          <input id="target" type="text" placeholder="e.g. body|skin (blank = all)" />
+        </label>
+        <label>Background <input id="bg" type="color" /></label>
+
+        <fieldset>
+          <legend>If something moves backwards</legend>
+          <label><input id="mirror" type="checkbox" /> Mirror view (swap left/right)</label>
+          <label><input id="swapBlink" type="checkbox" /> Swap blink eyes</label>
+          <label><input id="swapHands" type="checkbox" /> Swap hands</label>
+          <label><input id="flipEyeX" type="checkbox" /> Flip eyes left/right</label>
+          <label><input id="flipEyeY" type="checkbox" /> Flip eyes up/down</label>
+        </fieldset>
+        <label><input id="preview" type="checkbox" /> Show camera preview</label>
+      </div>
+    </aside>
+
+    <script type="module" src="/src/main.js"></script>
+  </body>
+</html>
