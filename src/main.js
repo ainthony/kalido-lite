@@ -318,7 +318,7 @@ $('target').addEventListener('change', async (e) => {
   await rebuildAvatar();
 });
 
-for (const key of ['mirror', 'swapBlink', 'swapHands', 'flipEyeX', 'flipEyeY']) {
+for (const key of ['mirror', 'swapBlink', 'swapHands', 'flipEyeX', 'flipEyeY', 'arms']) {
   const box = $(key);
   box.checked = !!settings[key];
   box.addEventListener('change', () => {
@@ -326,6 +326,11 @@ for (const key of ['mirror', 'swapBlink', 'swapHands', 'flipEyeX', 'flipEyeY']) 
     persist();
   });
 }
+
+const gain = $('torsoGain');
+gain.value = settings.torsoGain;
+gain.addEventListener('input', () => { settings.torsoGain = +gain.value; });
+gain.addEventListener('change', persist);
 
 $('toggle-ui').addEventListener('click', () => $('panel').classList.toggle('collapsed'));
 

@@ -24,7 +24,8 @@ const MODELS = {
 };
 
 export const settings = {
-  body: true,        // upper-body tracking (arms, torso)
+  body: true,        // upper-body tracking (shoulders lean/twist the torso)
+  arms: false,       // also track arms (needs elbows/wrists in frame)
   hands: false,      // finger tracking (heavier)
   mirror: false,     // swap left/right (true mirror view)
   swapBlink: false,  // swap which eye blinks
@@ -33,6 +34,7 @@ export const settings = {
   flipEyeY: false,   // eyes look the wrong way vertically
   headDamp: 0.7,     // how much head rotation reaches the neck
   smoothing: 0.45,   // higher = snappier, lower = smoother
+  torsoGain: 1.4,    // how strongly shoulders lean/twist the upper body
 };
 
 const clamp = (v, lo, hi) => Math.min(hi, Math.max(lo, v));
@@ -145,6 +147,7 @@ export class Tracker {
               // pose landmark indices: 11/12 shoulders, 13/14 elbows, 15/16 wrists, 23/24 hips
               Left: avg(11, 13, 15) > 0.5,
               Right: avg(12, 14, 16) > 0.5,
+              shoulders: avg(11, 12) > 0.5, // enough to lean/twist the upper body
               torso: avg(11, 12, 23, 24) > 0.6, // hips are often off-camera at a desk
             },
           };
@@ -290,7 +293,7 @@ export function restBody(vrm, t = 0.12) {
   if (!vrm) return;
   restArm(vrm, 'Left', t);
   restArm(vrm, 'Right', t);
-  for (const b of ['hips', 'spine', 'chest']) relaxBone(vrm, b, t);
+  for (const b of ['hips', 'spine', 'chest', 'upperChest']) relaxBone(vrm, b, t);
 }
 
 export function applyPoseRig(vrm, pose) {
@@ -300,7 +303,7 @@ export function applyPoseRig(vrm, pose) {
   const t = 0.3;
 
   for (const side of ['Left', 'Right']) {
-    if (vis[side]) {
+    if (settings.arms && vis[side]) {
       setBone(vrm, boneFor(`${side}UpperArm`), rig[`${side}UpperArm`], 1, t);
       setBone(vrm, boneFor(`${side}LowerArm`), rig[`${side}LowerArm`], 1, t);
       setBone(vrm, boneFor(`${side}Hand`), { x: 0, y: 0, z: rig[`${side}Hand`]?.z ?? 0 }, 1, t);
@@ -309,13 +312,18 @@ export function applyPoseRig(vrm, pose) {
     }
   }
 
-  if (vis.torso) {
-    setBone(vrm, 'hips', rig.Hips?.rotation, 0.5, t);
-    setBone(vrm, 'chest', rig.Spine, 0.25, t);
-    setBone(vrm, 'spine', rig.Spine, 0.45, t);
+  // Lean/twist comes from the shoulder line alone, so it works with only head and
+  // shoulders in frame. Hips need to be visible too, otherwise they stay put.
+  if (vis.shoulders) {
+    const g = settings.torsoGain;
+    setBone(vrm, 'spine', rig.Spine, 0.4 * g, t);
+    setBone(vrm, 'chest', rig.Spine, 0.3 * g, t);
+    setBone(vrm, 'upperChest', rig.Spine, 0.2 * g, t);
   } else {
-    for (const b of ['hips', 'spine', 'chest']) relaxBone(vrm, b, 0.08);
+    for (const b of ['spine', 'chest', 'upperChest']) relaxBone(vrm, b, 0.08);
   }
+  if (vis.torso) setBone(vrm, 'hips', rig.Hips?.rotation, 0.5, t);
+  else relaxBone(vrm, 'hips', 0.08);
 }
 
 // ---------------------------------------------------------------------------
