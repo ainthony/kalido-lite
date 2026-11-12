@@ -1,0 +1,140 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, user-scalable=no" />
+    <meta name="apple-mobile-web-app-capable" content="yes" />
+    <meta name="mobile-web-app-capable" content="yes" />
+    <title>Kalidoface Lite</title>
+  </head>
+  <body>
+    <canvas id="stage"></canvas>
+    <!-- Tracking source only: never displayed (no preview, by design). -->
+    <video id="cam" playsinline muted aria-hidden="true" tabindex="-1"></video>
+
+    <div id="hint" hidden>Tap the <b>person</b> button (bottom right) to load a <b>.vrm</b> model.</div>
+    <div id="toast" hidden></div>
+    <div id="fps"></div>
+
+    <!-- Right-edge icon rail -->
+    <nav id="rail" aria-label="Panels">
+      <button type="button" id="btn-info" data-panel="info" data-icon="info" title="Info" aria-label="Info" aria-pressed="false"></button>
+      <button type="button" id="btn-settings" data-panel="settings" data-icon="gear" title="Settings" aria-label="Settings" aria-pressed="false"></button>
+      <button type="button" id="btn-textures" data-panel="textures" data-icon="shirt" title="Textures" aria-label="Textures" aria-pressed="false"></button>
+      <button type="button" id="btn-hideui" data-icon="eye" title="Hide interface (move to the right edge or bottom-right to bring it back)" aria-label="Hide interface" aria-pressed="false"></button>
+    </nav>
+
+    <!-- Info (opens beside the rail) -->
+    <aside id="panel-info" class="panel right" hidden aria-label="Info">
+      <header><h2>Info</h2><button type="button" class="close" data-close="info" data-icon="x" aria-label="Close"></button></header>
+      <div class="scroll">
+        <ul class="help">
+          <li><b>Drag</b> the avatar to turn it left/right or tilt it up/down, <b>pinch</b> to zoom, <b>two fingers</b> to move. Double-tap resets the view.</li>
+          <li><b>Bottom right:</b> camera on/off, choose a <b>.vrm</b> model, and background colour.</li>
+          <li><b>Gear:</b> tracking, expressions, performance and view settings.</li>
+          <li><b>Shirt:</b> every texture on the model, with hide, replace and effects (animated GIF, APNG, WebP and MP4 work).</li>
+          <li><b>Eye:</b> hides the interface. It comes back while you hover (or tap) the right edge or the bottom-right corner. There is no camera preview, so the camera feed is never shown.</li>
+          <li><code>.vsfavatar</code> files are Unity bundles and can't run in a browser. Export VRM 1.0 from Unity (UniVRM) or Blender instead.</li>
+        </ul>
+      </div>
+    </aside>
+
+    <!-- Settings: opens to the right -->
+    <aside id="panel-settings" class="panel right" hidden aria-label="Settings">
+      <header><h2>Settings</h2><button type="button" class="close" data-close="settings" data-icon="x" aria-label="Close"></button></header>
+      <div class="scroll">
+        <fieldset>
+          <legend>Tracking</legend>
+          <label class="chk"><input id="body" type="checkbox" /> Body (shoulders move the torso)</label>
+          <label class="chk"><input id="arms" type="checkbox" /> Arms (needs elbows in frame)</label>
+          <label class="chk"><input id="hands" type="checkbox" /> Fingers (heavier)</label>
+          <label>Upper-body movement <input id="torsoGain" type="range" min="0" max="3" step="0.05" /></label>
+        </fieldset>
+
+        <fieldset>
+          <legend>Camera</legend>
+          <label>Camera <select id="cam-select"><option value="">Default (front camera)</option></select></label>
+          <button id="pos-calib" type="button">Calibrate face position</button>
+          <button id="pos-reset" type="button" hidden>Clear face position calibration</button>
+          <p class="note" id="pos-note">If your camera is above or beside the screen, look at the screen like you normally do and press Calibrate. That posture becomes "looking straight ahead".</p>
+        </fieldset>
+
+        <fieldset>
+          <legend>Expressions</legend>
+          <label class="chk"><input id="expressions" type="checkbox" /> Auto expressions</label>
+          <details id="expr-menu" class="dd">
+            <summary>Detect: <span id="expr-sum">all</span></summary>
+            <div class="dd-list">
+              <label class="chk"><input type="checkbox" data-emo="happy" /> Happy</label>
+              <label class="chk"><input type="checkbox" data-emo="angry" /> Angry</label>
+              <label class="chk"><input type="checkbox" data-emo="sad" /> Sad</label>
+              <label class="chk"><input type="checkbox" data-emo="surprised" /> Surprised</label>
+            </div>
+          </details>
+          <label>Strength <input id="exprGain" type="range" min="0.3" max="2.5" step="0.05" /></label>
+          <button id="calib" type="button">Calibrate (hold a neutral face)</button>
+        </fieldset>
+
+        <fieldset>
+          <legend>Performance</legend>
+          <label>Quality
+            <select id="perf">
+              <option value="auto">Auto</option>
+              <option value="quality">Quality</option>
+              <option value="balanced">Balanced</option>
+              <option value="fast">Fast</option>
+            </select>
+          </label>
+          <label class="chk"><input id="physics" type="checkbox" /> Hair / cloth physics</label>
+        </fieldset>
+
+        <fieldset>
+          <legend>View (drag = turn / tilt, pinch = zoom, two-finger drag = move)</legend>
+          <label>Turn (left / right) <input id="view-yaw" type="range" min="-180" max="180" step="1" /></label>
+          <label>Tilt (up / down) <input id="view-pitch" type="range" min="-80" max="80" step="1" /></label>
+          <label>Zoom <input id="view-zoom" type="range" min="0.25" max="6" step="0.01" /></label>
+          <label>Left / right <input id="view-x" type="range" min="-3" max="3" step="0.01" /></label>
+          <label>Up / down <input id="view-y" type="range" min="-3" max="3" step="0.01" /></label>
+          <button id="reset-view" type="button">Reset view</button>
+        </fieldset>
+
+        <fieldset>
+          <legend>If something moves backwards</legend>
+          <label class="chk"><input id="mirror" type="checkbox" /> Mirror view (swap left/right)</label>
+          <label class="chk"><input id="swapBlink" type="checkbox" /> Swap blink eyes</label>
+          <label class="chk"><input id="swapHands" type="checkbox" /> Swap hands</label>
+          <label class="chk"><input id="flipEyeX" type="checkbox" /> Flip eyes left/right</label>
+          <label class="chk"><input id="flipEyeY" type="checkbox" /> Flip eyes up/down</label>
+        </fieldset>
+      </div>
+    </aside>
+
+    <!-- Textures: opens to the left -->
+    <aside id="panel-textures" class="panel left" hidden aria-label="Textures">
+      <header>
+        <h2>Textures <small id="tx-count"></small></h2>
+        <button type="button" class="close" data-close="textures" data-icon="x" aria-label="Close"></button>
+      </header>
+      <div class="tx-tools">
+        <input id="tx-filter" type="search" placeholder="Filter textures…" aria-label="Filter textures" />
+        <button id="tx-showall" type="button" hidden>Show all</button>
+      </div>
+      <div id="tx-list" class="scroll"></div>
+    </aside>
+
+    <!-- Bottom-right control blob -->
+    <div id="blob">
+      <label class="round b-model" title="Choose VRM model" aria-label="Choose VRM model">
+        <span data-icon="user"></span>
+        <input id="pick-vrm" type="file" accept=".vrm,.glb,.vsfavatar,application/octet-stream" />
+      </label>
+      <label class="round b-bg" title="Background colour" aria-label="Background colour">
+        <span data-icon="drop"></span>
+        <input id="bg" type="color" />
+      </label>
+      <button type="button" id="start" class="b-cam" data-icon="camera" title="Start camera" aria-label="Start camera" aria-pressed="false"></button>
+    </div>
+
+    <script type="module" src="/src/main.js"></script>
+  </body>
+</html>
